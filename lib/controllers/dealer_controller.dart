@@ -8,7 +8,9 @@ class DealerController extends GetxController {
 
   final RxList<DealerModel> dealers = <DealerModel>[].obs;
   final RxBool isLoading = false.obs;
+  final RxBool isDeleting = false.obs;
   final RxString searchQuery = ''.obs;
+  final RxMap<int, double> balances = <int, double>{}.obs;
 
   List<DealerModel> get filteredDealers {
     final q = searchQuery.value.toLowerCase();
@@ -29,7 +31,16 @@ class DealerController extends GetxController {
   Future<void> loadDealers() async {
     isLoading.value = true;
     dealers.value = await _db.getAllDealers();
+    await _refreshBalances();
     isLoading.value = false;
+  }
+
+  Future<void> _refreshBalances() async {
+    final updated = <int, double>{};
+    for (final d in dealers) {
+      if (d.id != null) updated[d.id!] = await _db.getDealerBalance(d.id!);
+    }
+    balances.value = updated;
   }
 
   Future<bool> addDealer({
@@ -50,8 +61,6 @@ class DealerController extends GetxController {
     );
     await _db.insertDealer(dealer);
     await loadDealers();
-    Get.snackbar('Success', '${dealer.name} added',
-        snackPosition: SnackPosition.BOTTOM);
     return true;
   }
 
@@ -76,8 +85,12 @@ class DealerController extends GetxController {
   }
 
   Future<void> deleteDealer(int id, String name) async {
+    isDeleting.value = true;
     await _db.deleteDealer(id);
-    await loadDealers();
+    // Reload without toggling isLoading so the overlay stays visible
+    dealers.value = await _db.getAllDealers();
+    await _refreshBalances();
+    isDeleting.value = false;
     Get.snackbar('Deleted', '$name deleted',
         snackPosition: SnackPosition.BOTTOM);
   }

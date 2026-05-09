@@ -1,6 +1,6 @@
 # Dealer Ledger App – Development Progress
 
-## Status: Phase 1–8 Complete
+## Status: Phase 1–10 Complete
 
 ---
 
@@ -42,10 +42,11 @@
 - [x] Bottom bar: Scan Bill + Add Payment buttons
 
 ### Phase 7 – OCR (Google ML Kit)
-- [x] `OcrService` – Latin script text recognition
-- [x] Regex extraction: invoice number, date, amount, dealer name
-- [x] Scan screen with camera / gallery picker
-- [x] Auto-fills bill form fields after OCR; all fields remain editable
+- [x] `google_mlkit_text_recognition ^0.14.0` added to pubspec
+- [x] `OcrService` – Latin script text recognition via ML Kit
+- [x] Regex extraction: invoice number (bill/inv/receipt patterns), date (dd/mm/yyyy, yyyy-mm-dd, text month), amount (Grand Total / largest number fallback)
+- [x] `OcrController` – runs OCR after image pick, exposes `extractedBillNo`, `extractedDate`, `extractedAmount` as reactive observables
+- [x] Scan screen auto-fills form fields via `ever()` workers; processing overlay shown during OCR; success banner shown after extraction; all fields remain editable
 
 ### Phase 8 – Payment Module
 - [x] Add Payment screen with amount, date, mode (cash/bank/UPI/cheque/other), remarks
@@ -67,8 +68,8 @@
 ## Pending
 
 ### Phase 10 – Android & iOS Permissions
-- [ ] Add camera permission to `AndroidManifest.xml`
-- [ ] Add `NSCameraUsageDescription` + `NSPhotoLibraryUsageDescription` to `Info.plist`
+- [x] Add camera permission to `AndroidManifest.xml`
+- [x] Add `NSCameraUsageDescription` + `NSPhotoLibraryUsageDescription` to `Info.plist`
 
 ### Phase 11 – Testing
 - [ ] Add dealer, edit dealer, delete dealer

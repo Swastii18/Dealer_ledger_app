@@ -5,50 +5,40 @@ import '../models/dealer_model.dart';
 import '../routes/app_routes.dart';
 import '../widgets/dealer_card.dart';
 
-class DealerListScreen extends StatefulWidget {
+class DealerListScreen extends StatelessWidget {
   const DealerListScreen({super.key});
 
-  @override
-  State<DealerListScreen> createState() => _DealerListScreenState();
-}
+  DealerController get _ctrl => Get.find();
 
-class _DealerListScreenState extends State<DealerListScreen> {
-  final DealerController _ctrl = Get.find();
-  final Map<int, double> _balances = {};
-
-  @override
-  void initState() {
-    super.initState();
-    _loadBalances();
-  }
-
-  Future<void> _loadBalances() async {
-    for (final d in _ctrl.dealers) {
-      if (d.id != null) {
-        _balances[d.id!] = await _ctrl.getDealerBalance(d.id!);
-      }
-    }
-    if (mounted) setState(() {});
-  }
-
-  void _confirmDelete(DealerModel dealer) {
-    Get.defaultDialog(
-      title: 'Delete Dealer',
-      middleText:
-          'Delete ${dealer.name} and all their records? This cannot be undone.',
-      textConfirm: 'Delete',
-      textCancel: 'Cancel',
-      confirmTextColor: Colors.white,
-      buttonColor: Colors.red,
-      onConfirm: () {
-        Get.back();
-        _ctrl.deleteDealer(dealer.id!, dealer.name);
-      },
+  Future<void> _confirmDelete(BuildContext context, DealerModel dealer) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        title: const Text('Delete Dealer'),
+        content: Text(
+            'Delete ${dealer.name} and all their records? This cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
     );
+    if (confirmed == true) {
+      await _ctrl.deleteDealer(dealer.id!, dealer.name);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final ctrl = _ctrl;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Dealers'),
@@ -57,7 +47,7 @@ class _DealerListScreenState extends State<DealerListScreen> {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
             child: TextField(
-              onChanged: (v) => _ctrl.searchQuery.value = v,
+              onChanged: (v) => ctrl.searchQuery.value = v,
               decoration: const InputDecoration(
                 hintText: 'Search dealers...',
                 prefixIcon: Icon(Icons.search),
@@ -70,47 +60,88 @@ class _DealerListScreenState extends State<DealerListScreen> {
         ),
       ),
       body: Obx(() {
-        if (_ctrl.isLoading.value) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        final list = _ctrl.filteredDealers;
-        if (list.isEmpty) {
-          return const Center(
-            child: Text('No dealers found.\nTap + to add one.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey, fontSize: 15)),
-          );
-        }
-        return RefreshIndicator(
-          onRefresh: () async {
-            await _ctrl.loadDealers();
-            await _loadBalances();
-          },
-          child: ListView.builder(
-            padding: const EdgeInsets.only(top: 8, bottom: 80),
-            itemCount: list.length,
-            itemBuilder: (_, i) {
-              final dealer = list[i];
-              return DealerCard(
-                dealer: dealer,
-                balance: _balances[dealer.id] ?? 0,
-                onTap: () =>
-                    Get.toNamed(AppRoutes.dealerLedger, arguments: dealer),
-                onEdit: () =>
-                    Get.toNamed(AppRoutes.addDealer, arguments: dealer),
-                onDelete: () => _confirmDelete(dealer),
-              );
-            },
-          ),
+        final isDeleting = ctrl.isDeleting.value;
+        final isLoading = ctrl.isLoading.value;
+        final list = ctrl.filteredDealers;
+
+        return Stack(
+          children: [
+            if (isLoading)
+              const Center(child: CircularProgressIndicator())
+            else if (list.isEmpty)
+              const Center(
+                child: Text(
+                  'No dealers found.\nTap + to add one.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey, fontSize: 15),
+                ),
+              )
+            else
+              RefreshIndicator(
+                onRefresh: ctrl.loadDealers,
+                child: ListView.builder(
+                  padding: const EdgeInsets.only(top: 8, bottom: 80),
+                  itemCount: list.length,
+                  itemBuilder: (ctx, i) {
+                    final dealer = list[i];
+                    return DealerCard(
+                      key: ValueKey(dealer.id),
+                      dealer: dealer,
+                      balance: ctrl.balances[dealer.id] ?? 0,
+                      onTap: () => Get.toNamed(
+                          AppRoutes.dealerLedger,
+                          arguments: dealer),
+                      onEdit: () => Get.toNamed(
+                          AppRoutes.addDealer,
+                          arguments: dealer),
+                      onDelete: () => _confirmDelete(ctx, dealer),
+                    );
+                  },
+                ),
+              ),
+
+            // Blocking overlay while deleting
+            if (isDeleting)
+              Container(
+                color: Colors.black45,
+                child: const Center(
+                  child: Card(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                          horizontal: 32, vertical: 24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircularProgressIndicator(),
+                          SizedBox(height: 16),
+                          Text('Deleting dealer...',
+                              style: TextStyle(fontSize: 15)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
         );
       }),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          await Get.toNamed(AppRoutes.addDealer);
-          await _loadBalances();
-        },
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: Obx(() => FloatingActionButton(
+            onPressed: _ctrl.isDeleting.value
+                ? null
+                : () async {
+                    final added = await Get.toNamed(
+                        AppRoutes.addDealer,
+                        arguments: null);
+                    if (added == true) {
+                      Get.snackbar(
+                        'Success',
+                        'Dealer added',
+                        snackPosition: SnackPosition.BOTTOM,
+                      );
+                    }
+                  },
+            child: const Icon(Icons.add),
+          )),
     );
   }
 }

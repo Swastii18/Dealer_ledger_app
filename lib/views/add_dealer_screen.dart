@@ -23,7 +23,8 @@ class _AddDealerScreenState extends State<AddDealerScreen> {
   @override
   void initState() {
     super.initState();
-    _editing = Get.arguments as DealerModel?;
+    final args = Get.arguments;
+    _editing = args is DealerModel ? args : null;
     if (_editing != null) {
       _nameCtrl.text = _editing!.name;
       _phoneCtrl.text = _editing!.phone;
@@ -58,7 +59,7 @@ class _AddDealerScreenState extends State<AddDealerScreen> {
       );
     }
     setState(() => _saving = false);
-    if (ok) Get.back();
+    if (ok) Get.back(result: _editing == null ? true : null);
   }
 
   @override
