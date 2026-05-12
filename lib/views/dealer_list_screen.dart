@@ -8,7 +8,7 @@ import '../widgets/dealer_card.dart';
 class DealerListScreen extends StatelessWidget {
   const DealerListScreen({super.key});
 
-  DealerController get _ctrl => Get.find();
+  DealerController get _ctrl => Get.find()..searchQuery.value = '';
 
   Future<void> _confirmDelete(BuildContext context, DealerModel dealer) async {
     final confirmed = await showDialog<bool>(

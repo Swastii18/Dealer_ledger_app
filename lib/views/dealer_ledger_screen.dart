@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:intl/intl.dart';
 import '../controllers/ledger_controller.dart';
 import '../models/dealer_model.dart';
 import '../routes/app_routes.dart';
 import '../theme/app_theme.dart';
+import '../utils/format.dart';
 import '../widgets/ledger_tile.dart';
 
 class DealerLedgerScreen extends StatefulWidget {
@@ -17,33 +17,48 @@ class DealerLedgerScreen extends StatefulWidget {
 class _DealerLedgerScreenState extends State<DealerLedgerScreen> {
   late final LedgerController _ctrl;
   late final DealerModel _dealer;
+  final _searchCtrl = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _dealer = Get.arguments as DealerModel;
     _ctrl = Get.find<LedgerController>();
+    // Clear previous dealer's search/filter state
     _ctrl.searchQuery.value = '';
     _ctrl.filterDate.value = '';
+    _searchCtrl.clear();
     _ctrl.loadLedger(_dealer.id!);
   }
 
-  void _confirmDelete(int entryId) {
-    Get.defaultDialog(
-      title: 'Delete Entry',
-      middleText: 'Remove this ledger entry?',
-      textConfirm: 'Delete',
-      textCancel: 'Cancel',
-      confirmTextColor: Colors.white,
-      buttonColor: Colors.red,
-      onConfirm: () {
-        Get.back();
-        _ctrl.deleteLedgerEntry(entryId);
-      },
-    );
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
   }
 
-  String _fmt(double v) => '₹${NumberFormat('#,##0.00', 'en_IN').format(v)}';
+  Future<void> _confirmDelete(BuildContext ctx, int entryId) async {
+    final confirmed = await showDialog<bool>(
+      context: ctx,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        title: const Text('Delete Entry'),
+        content: const Text('Remove this ledger entry?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) _ctrl.deleteLedgerEntry(entryId);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -63,13 +78,23 @@ class _DealerLedgerScreenState extends State<DealerLedgerScreen> {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
             child: TextField(
+              controller: _searchCtrl,
               onChanged: (v) => _ctrl.searchQuery.value = v,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: 'Search bill no, date, remarks...',
-                prefixIcon: Icon(Icons.search),
+                prefixIcon: const Icon(Icons.search),
                 filled: true,
                 fillColor: Colors.white,
                 isDense: true,
+                suffixIcon: Obx(() => _ctrl.searchQuery.value.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, size: 18),
+                        onPressed: () {
+                          _searchCtrl.clear();
+                          _ctrl.searchQuery.value = '';
+                        },
+                      )
+                    : const SizedBox.shrink()),
               ),
             ),
           ),
@@ -85,13 +110,13 @@ class _DealerLedgerScreenState extends State<DealerLedgerScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _balancePill('Debit', _fmt(_ctrl.totalDebit),
+                    _balancePill('Debit', fmtAmount(_ctrl.totalDebit),
                         AppTheme.debitColor),
-                    _balancePill('Credit', _fmt(_ctrl.totalCredit),
+                    _balancePill('Credit', fmtAmount(_ctrl.totalCredit),
                         AppTheme.creditColor),
                     _balancePill(
                         'Balance',
-                        _fmt(_ctrl.currentBalance),
+                        fmtAmount(_ctrl.currentBalance),
                         _ctrl.currentBalance > 0
                             ? AppTheme.debitColor
                             : AppTheme.creditColor),
@@ -106,18 +131,25 @@ class _DealerLedgerScreenState extends State<DealerLedgerScreen> {
               }
               final entries = _ctrl.filteredEntries;
               if (entries.isEmpty) {
-                return const Center(
-                  child: Text('No entries yet.\nScan a bill or add a payment.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey, fontSize: 15)),
+                final isEmpty = _ctrl.entries.isEmpty;
+                return Center(
+                  child: Text(
+                    isEmpty
+                        ? 'No entries yet.\nScan a bill or add a payment.'
+                        : 'No results for "${_ctrl.searchQuery.value}".',
+                    textAlign: TextAlign.center,
+                    style:
+                        const TextStyle(color: Colors.grey, fontSize: 15),
+                  ),
                 );
               }
               return ListView.builder(
                 padding: const EdgeInsets.only(top: 8, bottom: 100),
                 itemCount: entries.length,
-                itemBuilder: (_, i) => LedgerTile(
+                itemBuilder: (ctx, i) => LedgerTile(
+                  key: ValueKey(entries[i].id),
                   entry: entries[i],
-                  onDelete: () => _confirmDelete(entries[i].id!),
+                  onDelete: () => _confirmDelete(ctx, entries[i].id!),
                 ),
               );
             }),

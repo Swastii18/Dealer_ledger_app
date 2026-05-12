@@ -22,11 +22,11 @@ class DealerModel {
       };
 
   factory DealerModel.fromMap(Map<String, dynamic> map) => DealerModel(
-        id: map['id'],
-        name: map['name'],
-        phone: map['phone'],
-        address: map['address'],
-        createdAt: map['created_at'],
+        id: map['id'] as int?,
+        name: (map['name'] as String?) ?? '',
+        phone: (map['phone'] as String?) ?? '',
+        address: (map['address'] as String?) ?? '',
+        createdAt: (map['created_at'] as String?) ?? '',
       );
 
   DealerModel copyWith({

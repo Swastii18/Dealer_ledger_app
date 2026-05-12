@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../controllers/ledger_controller.dart';
 import '../models/dealer_model.dart';
 import '../theme/app_theme.dart';
+import '../utils/format.dart';
 
 class AddPaymentScreen extends StatefulWidget {
   const AddPaymentScreen({super.key});
@@ -85,7 +86,7 @@ class _AddPaymentScreenState extends State<AddPaymentScreen> {
                         const Text('Current Balance Due',
                             style: TextStyle(fontWeight: FontWeight.w500)),
                         Text(
-                          '₹${_ctrl.currentBalance.toStringAsFixed(2)}',
+                          fmtAmount(_ctrl.currentBalance),
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 18,

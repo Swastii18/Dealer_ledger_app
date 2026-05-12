@@ -23,7 +23,7 @@ class _SplashScreenState extends State<SplashScreen>
     _fade = CurvedAnimation(parent: _ctrl, curve: Curves.easeIn);
     _ctrl.forward();
     Future.delayed(const Duration(seconds: 2), () {
-      Get.offNamed(AppRoutes.dashboard);
+      if (mounted) Get.offNamed(AppRoutes.dashboard);
     });
   }
 

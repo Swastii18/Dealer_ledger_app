@@ -16,26 +16,27 @@ class OcrResult {
 }
 
 class OcrService {
-  final _recognizer = TextRecognizer(script: TextRecognitionScript.latin);
-
+  // Recognizer is created and closed per call so no long-lived native resource.
   Future<OcrResult> extractFromImage(File imageFile) async {
-    final inputImage = InputImage.fromFile(imageFile);
-    final recognized = await _recognizer.processImage(inputImage);
-    final text = recognized.text;
-    return OcrResult(
-      rawText: text,
-      billNo: _extractBillNo(text),
-      date: _extractDate(text),
-      amount: _extractAmount(text),
-    );
+    final recognizer = TextRecognizer(script: TextRecognitionScript.latin);
+    try {
+      final inputImage = InputImage.fromFile(imageFile);
+      final recognized = await recognizer.processImage(inputImage);
+      final text = recognized.text;
+      return OcrResult(
+        rawText: text,
+        billNo: _extractBillNo(text),
+        date: _extractDate(text),
+        amount: _extractAmount(text),
+      );
+    } finally {
+      await recognizer.close();
+    }
   }
-
-  void dispose() => _recognizer.close();
 
   // ── Extractors ────────────────────────────────────────────────────────────
 
   String _extractBillNo(String text) {
-    // Matches: Invoice No: 1234 / Bill No. ABC-123 / Invoice# INV2024 / No: 456
     final patterns = [
       RegExp(
           r'(?:invoice|bill|inv|receipt|voucher|challan)\s*(?:no|num|number|#|\.)\s*[:\-]?\s*([A-Z0-9][\w\-/]{0,20})',
@@ -51,14 +52,14 @@ class OcrService {
   }
 
   String _extractDate(String text) {
-    // dd/mm/yyyy  dd-mm-yyyy  dd.mm.yyyy
-    final dmy = RegExp(r'\b(\d{1,2})[/\-\.](\d{1,2})[/\-\.](\d{2,4})\b');
-    // yyyy-mm-dd
-    final ymd = RegExp(r'\b(\d{4})[/\-\.](\d{1,2})[/\-\.](\d{1,2})\b');
     // 12 Jan 2024 / 12-Jan-24
     final textMonth = RegExp(
         r'\b(\d{1,2})[\s\-]?(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[\s\-,]*(\d{2,4})\b',
         caseSensitive: false);
+    // yyyy-mm-dd
+    final ymd = RegExp(r'\b(\d{4})[/\-\.](\d{1,2})[/\-\.](\d{1,2})\b');
+    // dd/mm/yyyy  dd-mm-yyyy  dd.mm.yyyy
+    final dmy = RegExp(r'\b(\d{1,2})[/\-\.](\d{1,2})[/\-\.](\d{2,4})\b');
 
     final mText = textMonth.firstMatch(text);
     if (mText != null) {
@@ -90,14 +91,14 @@ class OcrService {
   }
 
   double? _extractAmount(String text) {
-    // Priority: lines containing Total / Grand Total / Net / Amount Due / Payable
+    // Priority: lines with total/payable keywords
     final priorityLine = RegExp(
         r'(?:grand\s*total|net\s*total|total\s*amount|amount\s*due|payable|total)[^\d]*(\d[\d,]*\.?\d*)',
         caseSensitive: false);
     final m = priorityLine.firstMatch(text);
     if (m != null) return _parseAmount(m.group(1)!);
 
-    // Fallback: largest number in the text (likely the total)
+    // Fallback: largest number in text
     final allNums = RegExp(r'\b(\d[\d,]*\.?\d{0,2})\b');
     double? largest;
     for (final m2 in allNums.allMatches(text)) {
@@ -107,10 +108,7 @@ class OcrService {
     return largest;
   }
 
-  double? _parseAmount(String s) {
-    final cleaned = s.replaceAll(',', '');
-    return double.tryParse(cleaned);
-  }
+  double? _parseAmount(String s) => double.tryParse(s.replaceAll(',', ''));
 
   String _monthNum(String abbr) {
     const map = {

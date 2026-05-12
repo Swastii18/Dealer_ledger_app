@@ -30,16 +30,10 @@ class LedgerController extends GetxController {
     return list;
   }
 
-  double get currentBalance {
-    if (entries.isEmpty) return 0;
-    return entries.last.runningTotal;
-  }
-
-  double get totalDebit =>
-      entries.fold(0, (sum, e) => sum + e.debit);
-
-  double get totalCredit =>
-      entries.fold(0, (sum, e) => sum + e.credit);
+  // Always reads from the full chronological list, never filtered
+  double get currentBalance => entries.isEmpty ? 0 : entries.last.runningTotal;
+  double get totalDebit => entries.fold(0.0, (s, e) => s + e.debit);
+  double get totalCredit => entries.fold(0.0, (s, e) => s + e.credit);
 
   Future<void> loadLedger(int dealerId) async {
     _currentDealerId = dealerId;
@@ -60,20 +54,24 @@ class LedgerController extends GetxController {
           snackPosition: SnackPosition.BOTTOM);
       return false;
     }
-    final lastBalance = await _db.getLastRunningTotal(dealerId);
+
+    // Insert with a temporary running total, then recalculate all
+    // so backdated entries get correct balances
     final entry = LedgerModel(
       dealerId: dealerId,
       date: date,
       billNo: billNo.trim(),
       debit: amount,
       credit: 0,
-      runningTotal: lastBalance + amount,
+      runningTotal: 0,
       paymentType: 'bill',
       remarks: remarks.trim(),
     );
     await _db.insertLedgerEntry(entry);
+    await _recalculateRunningTotals(dealerId);
     await loadLedger(dealerId);
-    Get.snackbar('Saved', 'Bill entry saved', snackPosition: SnackPosition.BOTTOM);
+    Get.snackbar('Saved', 'Bill entry saved',
+        snackPosition: SnackPosition.BOTTOM);
     return true;
   }
 
@@ -89,36 +87,39 @@ class LedgerController extends GetxController {
           snackPosition: SnackPosition.BOTTOM);
       return false;
     }
-    final lastBalance = await _db.getLastRunningTotal(dealerId);
     final entry = LedgerModel(
       dealerId: dealerId,
       date: date,
       billNo: '',
       debit: 0,
       credit: amount,
-      runningTotal: lastBalance - amount,
+      runningTotal: 0,
       paymentType: paymentType,
       remarks: remarks.trim(),
     );
     await _db.insertLedgerEntry(entry);
+    await _recalculateRunningTotals(dealerId);
     await loadLedger(dealerId);
-    Get.snackbar('Saved', 'Payment recorded', snackPosition: SnackPosition.BOTTOM);
+    Get.snackbar('Saved', 'Payment recorded',
+        snackPosition: SnackPosition.BOTTOM);
     return true;
   }
 
   Future<void> deleteLedgerEntry(int entryId) async {
     await _db.deleteLedgerEntry(entryId);
     if (_currentDealerId != null) {
-      // Recalculate running totals after deletion
       await _recalculateRunningTotals(_currentDealerId!);
       await loadLedger(_currentDealerId!);
     }
+    Get.snackbar('Deleted', 'Entry removed',
+        snackPosition: SnackPosition.BOTTOM);
   }
 
   Future<void> _recalculateRunningTotals(int dealerId) async {
-    final allEntries = await _db.getLedgerByDealer(dealerId);
+    // Ordered date ASC, id ASC — same order as getLedgerByDealer
+    final all = await _db.getLedgerByDealer(dealerId);
     double running = 0;
-    for (final e in allEntries) {
+    for (final e in all) {
       running = running + e.debit - e.credit;
       await _db.updateLedgerEntry(e.copyWith(runningTotal: running));
     }

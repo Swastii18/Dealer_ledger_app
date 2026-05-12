@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/dealer_model.dart';
 import '../theme/app_theme.dart';
+import '../utils/format.dart';
 
 class DealerCard extends StatelessWidget {
   final DealerModel dealer;
@@ -59,7 +60,7 @@ class DealerCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    '₹${balance.toStringAsFixed(2)}',
+                    fmtAmount(balance),
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 14,

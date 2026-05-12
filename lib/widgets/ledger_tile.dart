@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/ledger_model.dart';
 import '../theme/app_theme.dart';
+import '../utils/format.dart';
 
 class LedgerTile extends StatelessWidget {
   final LedgerModel entry;
@@ -32,7 +33,7 @@ class LedgerTile extends StatelessWidget {
               ),
             ),
             Text(
-              '${isDebit ? '+' : '-'}₹${amount.toStringAsFixed(2)}',
+              '${isDebit ? '+' : '-'}${fmtAmount(amount)}',
               style: TextStyle(
                   fontWeight: FontWeight.bold, color: color, fontSize: 14),
             ),
@@ -51,7 +52,7 @@ class LedgerTile extends StatelessWidget {
               ),
             ],
             const Spacer(),
-            Text('Bal: ₹${entry.runningTotal.toStringAsFixed(2)}',
+            Text('Bal: ${fmtAmount(entry.runningTotal)}',
                 style: TextStyle(
                     fontSize: 11,
                     color: entry.runningTotal > 0

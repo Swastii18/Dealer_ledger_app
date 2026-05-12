@@ -60,9 +60,4 @@ class OcrController extends GetxController {
     }
   }
 
-  @override
-  void onClose() {
-    _ocrService.dispose();
-    super.onClose();
-  }
 }
