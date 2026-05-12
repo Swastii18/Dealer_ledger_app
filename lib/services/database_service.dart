@@ -4,6 +4,10 @@ import '../models/dealer_model.dart';
 import '../models/ledger_model.dart';
 
 class DatabaseService {
+  DatabaseService._();
+  static final DatabaseService instance = DatabaseService._();
+  factory DatabaseService() => instance;
+
   static Database? _db;
   static const String _dbName = 'dealer_ledger.db';
   static const int _dbVersion = 1;
@@ -94,6 +98,20 @@ class DatabaseService {
     return rows.map(LedgerModel.fromMap).toList();
   }
 
+  /// Running total of all entries strictly before [date] (or before [entryId]
+  /// on the same date), used when inserting a backdated entry.
+  Future<double> getRunningTotalBefore(
+      int dealerId, String date, int entryId) async {
+    final db = await database;
+    final rows = await db.rawQuery('''
+      SELECT COALESCE(SUM(debit) - SUM(credit), 0) as balance
+      FROM ledger
+      WHERE dealer_id = ?
+        AND (date < ? OR (date = ? AND id < ?))
+    ''', [dealerId, date, date, entryId]);
+    return (rows.first['balance'] as num?)?.toDouble() ?? 0.0;
+  }
+
   Future<int> updateLedgerEntry(LedgerModel entry) async {
     final db = await database;
     return db.update('ledger', entry.toMap(),
@@ -105,16 +123,16 @@ class DatabaseService {
     return db.delete('ledger', where: 'id = ?', whereArgs: [id]);
   }
 
-  /// Returns the last running total for a dealer, or 0 if none.
+  /// Returns the running total of the chronologically last entry, or 0 if none.
   Future<double> getLastRunningTotal(int dealerId) async {
     final db = await database;
     final rows = await db.query('ledger',
         where: 'dealer_id = ?',
         whereArgs: [dealerId],
-        orderBy: 'id DESC',
+        orderBy: 'date DESC, id DESC',
         limit: 1);
     if (rows.isEmpty) return 0;
-    return (rows.first['running_total'] as num).toDouble();
+    return (rows.first['running_total'] as num?)?.toDouble() ?? 0.0;
   }
 
   // ── Dashboard aggregates ─────────────────────────────────────────────────────

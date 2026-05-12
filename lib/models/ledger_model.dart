@@ -37,15 +37,15 @@ class LedgerModel {
       };
 
   factory LedgerModel.fromMap(Map<String, dynamic> map) => LedgerModel(
-        id: map['id'],
-        dealerId: map['dealer_id'],
-        date: map['date'],
-        billNo: map['bill_no'],
-        debit: (map['debit'] as num).toDouble(),
-        credit: (map['credit'] as num).toDouble(),
-        runningTotal: (map['running_total'] as num).toDouble(),
-        paymentType: map['payment_type'],
-        remarks: map['remarks'],
+        id: map['id'] as int?,
+        dealerId: map['dealer_id'] as int,
+        date: (map['date'] as String?) ?? '',
+        billNo: (map['bill_no'] as String?) ?? '',
+        debit: (map['debit'] as num?)?.toDouble() ?? 0.0,
+        credit: (map['credit'] as num?)?.toDouble() ?? 0.0,
+        runningTotal: (map['running_total'] as num?)?.toDouble() ?? 0.0,
+        paymentType: (map['payment_type'] as String?) ?? '',
+        remarks: (map['remarks'] as String?) ?? '',
       );
 
   LedgerModel copyWith({

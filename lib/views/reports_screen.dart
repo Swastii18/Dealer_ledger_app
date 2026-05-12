@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:intl/intl.dart';
 import '../controllers/ledger_controller.dart';
 import '../models/dealer_model.dart';
 import '../services/report_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/format.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -26,7 +26,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
     if (_ctrl.entries.isEmpty) _ctrl.loadLedger(_dealer.id!);
   }
 
-  String _fmt(double v) => '₹${NumberFormat('#,##0.00', 'en_IN').format(v)}';
 
   Future<void> _sharePdf() async {
     setState(() => _exporting = true);
@@ -94,12 +93,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     _summaryRow('Total Transactions', '${entries.length}',
                         Colors.blueGrey),
                     const Divider(),
-                    _summaryRow('Total Debit', _fmt(_ctrl.totalDebit),
+                    _summaryRow('Total Debit', fmtAmount(_ctrl.totalDebit),
                         AppTheme.debitColor),
-                    _summaryRow('Total Credit', _fmt(_ctrl.totalCredit),
+                    _summaryRow('Total Credit', fmtAmount(_ctrl.totalCredit),
                         AppTheme.creditColor),
                     const Divider(),
-                    _summaryRow('Net Balance Due', _fmt(_ctrl.currentBalance),
+                    _summaryRow('Net Balance Due', fmtAmount(_ctrl.currentBalance),
                         _ctrl.currentBalance > 0
                             ? AppTheme.debitColor
                             : AppTheme.creditColor,
@@ -137,7 +136,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                   style: const TextStyle(fontSize: 12))),
                               DataCell(Text(
                                   e.debit > 0
-                                      ? _fmt(e.debit)
+                                      ? fmtAmount(e.debit)
                                       : '-',
                                   style: TextStyle(
                                       fontSize: 12,
@@ -146,14 +145,14 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                           : null))),
                               DataCell(Text(
                                   e.credit > 0
-                                      ? _fmt(e.credit)
+                                      ? fmtAmount(e.credit)
                                       : '-',
                                   style: TextStyle(
                                       fontSize: 12,
                                       color: e.credit > 0
                                           ? AppTheme.creditColor
                                           : null))),
-                              DataCell(Text(_fmt(e.runningTotal),
+                              DataCell(Text(fmtAmount(e.runningTotal),
                                   style: const TextStyle(fontSize: 12))),
                             ]))
                         .toList(),

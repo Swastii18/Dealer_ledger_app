@@ -1,7 +1,7 @@
 import 'package:get/get.dart';
+import 'package:intl/intl.dart' show DateFormat;
 import '../models/dealer_model.dart';
 import '../services/database_service.dart';
-import 'package:intl/intl.dart';
 
 class DealerController extends GetxController {
   final DatabaseService _db = DatabaseService();
@@ -97,4 +97,5 @@ class DealerController extends GetxController {
 
   Future<double> getDealerBalance(int dealerId) =>
       _db.getDealerBalance(dealerId);
+
 }
