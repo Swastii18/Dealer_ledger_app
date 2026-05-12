@@ -79,8 +79,6 @@ class DealerController extends GetxController {
         name: name.trim(), phone: phone.trim(), address: address.trim());
     await _db.updateDealer(updated);
     await loadDealers();
-    Get.snackbar('Updated', '${updated.name} updated',
-        snackPosition: SnackPosition.BOTTOM);
     return true;
   }
 

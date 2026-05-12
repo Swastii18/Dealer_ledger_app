@@ -34,7 +34,8 @@ class _ScanBillScreenState extends State<ScanBillScreen> {
   @override
   void initState() {
     super.initState();
-    _dealer = Get.arguments as DealerModel;
+    final args = Get.arguments;
+    _dealer = args is DealerModel ? args : (throw ArgumentError('ScanBillScreen requires a DealerModel argument'));
     _ocr.reset();
     _dateCtrl.text = DateFormat('yyyy-MM-dd').format(DateTime.now());
 
@@ -45,7 +46,7 @@ class _ScanBillScreenState extends State<ScanBillScreen> {
       if (val.isNotEmpty) _dateCtrl.text = val;
     });
     _amountWorker = ever(_ocr.extractedAmount, (val) {
-      if (val > 0) _amountCtrl.text = val.toStringAsFixed(2);
+      if (val > 0) _amountCtrl.text = val.toStringAsFixed(2); // raw number for input field, no ₹
     });
   }
 
