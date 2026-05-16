@@ -22,7 +22,8 @@ class _DealerLedgerScreenState extends State<DealerLedgerScreen> {
   @override
   void initState() {
     super.initState();
-    _dealer = Get.arguments as DealerModel;
+    final args = Get.arguments;
+    _dealer = args is DealerModel ? args : (throw ArgumentError('DealerLedgerScreen requires a DealerModel argument'));
     _ctrl = Get.find<LedgerController>();
     // Clear previous dealer's search/filter state
     _ctrl.searchQuery.value = '';

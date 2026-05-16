@@ -59,7 +59,10 @@ class _AddDealerScreenState extends State<AddDealerScreen> {
       );
     }
     setState(() => _saving = false);
-    if (ok) Get.back(result: _editing == null ? true : null);
+    if (ok) {
+      // Pass true for new dealer, dealer name for edit — caller shows snackbar
+      Get.back(result: _editing == null ? true : _nameCtrl.text.trim());
+    }
   }
 
   @override

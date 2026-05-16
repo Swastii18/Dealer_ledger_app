@@ -5,12 +5,33 @@ import '../models/dealer_model.dart';
 import '../routes/app_routes.dart';
 import '../widgets/dealer_card.dart';
 
-class DealerListScreen extends StatelessWidget {
+class DealerListScreen extends StatefulWidget {
   const DealerListScreen({super.key});
 
-  DealerController get _ctrl => Get.find()..searchQuery.value = '';
+  @override
+  State<DealerListScreen> createState() => _DealerListScreenState();
+}
 
-  Future<void> _confirmDelete(BuildContext context, DealerModel dealer) async {
+class _DealerListScreenState extends State<DealerListScreen> {
+  late final DealerController _ctrl;
+  final _searchCtrl = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = Get.find<DealerController>();
+    // Clear any leftover search from a previous visit
+    _ctrl.searchQuery.value = '';
+    _searchCtrl.clear();
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _confirmDelete(DealerModel dealer) async {
     final confirmed = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -38,7 +59,6 @@ class DealerListScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ctrl = _ctrl;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Dealers'),
@@ -46,39 +66,51 @@ class DealerListScreen extends StatelessWidget {
           preferredSize: const Size.fromHeight(56),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: TextField(
-              onChanged: (v) => ctrl.searchQuery.value = v,
-              decoration: const InputDecoration(
-                hintText: 'Search dealers...',
-                prefixIcon: Icon(Icons.search),
-                filled: true,
-                fillColor: Colors.white,
-                isDense: true,
-              ),
-            ),
+            child: Obx(() => TextField(
+                  controller: _searchCtrl,
+                  onChanged: (v) => _ctrl.searchQuery.value = v,
+                  decoration: InputDecoration(
+                    hintText: 'Search dealers...',
+                    prefixIcon: const Icon(Icons.search),
+                    filled: true,
+                    fillColor: Colors.white,
+                    isDense: true,
+                    suffixIcon: _ctrl.searchQuery.value.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear, size: 18),
+                            onPressed: () {
+                              _searchCtrl.clear();
+                              _ctrl.searchQuery.value = '';
+                            },
+                          )
+                        : null,
+                  ),
+                )),
           ),
         ),
       ),
       body: Obx(() {
-        final isDeleting = ctrl.isDeleting.value;
-        final isLoading = ctrl.isLoading.value;
-        final list = ctrl.filteredDealers;
+        final isDeleting = _ctrl.isDeleting.value;
+        final isLoading = _ctrl.isLoading.value;
+        final list = _ctrl.filteredDealers;
 
         return Stack(
           children: [
             if (isLoading)
               const Center(child: CircularProgressIndicator())
             else if (list.isEmpty)
-              const Center(
+              Center(
                 child: Text(
-                  'No dealers found.\nTap + to add one.',
+                  _ctrl.searchQuery.value.isNotEmpty
+                      ? 'No results for "${_ctrl.searchQuery.value}".'
+                      : 'No dealers found.\nTap + to add one.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey, fontSize: 15),
+                  style: const TextStyle(color: Colors.grey, fontSize: 15),
                 ),
               )
             else
               RefreshIndicator(
-                onRefresh: ctrl.loadDealers,
+                onRefresh: _ctrl.loadDealers,
                 child: ListView.builder(
                   padding: const EdgeInsets.only(top: 8, bottom: 80),
                   itemCount: list.length,
@@ -87,28 +119,33 @@ class DealerListScreen extends StatelessWidget {
                     return DealerCard(
                       key: ValueKey(dealer.id),
                       dealer: dealer,
-                      balance: ctrl.balances[dealer.id] ?? 0,
+                      balance: _ctrl.balances[dealer.id] ?? 0,
                       onTap: () => Get.toNamed(
                           AppRoutes.dealerLedger,
                           arguments: dealer),
-                      onEdit: () => Get.toNamed(
-                          AppRoutes.addDealer,
-                          arguments: dealer),
-                      onDelete: () => _confirmDelete(ctx, dealer),
+                      onEdit: () async {
+                        final result = await Get.toNamed(
+                            AppRoutes.addDealer,
+                            arguments: dealer);
+                        if (result is String && result.isNotEmpty) {
+                          Get.snackbar('Updated', '$result updated',
+                              snackPosition: SnackPosition.BOTTOM);
+                        }
+                      },
+                      onDelete: () => _confirmDelete(dealer),
                     );
                   },
                 ),
               ),
 
-            // Blocking overlay while deleting
             if (isDeleting)
               Container(
                 color: Colors.black45,
                 child: const Center(
                   child: Card(
                     child: Padding(
-                      padding: EdgeInsets.symmetric(
-                          horizontal: 32, vertical: 24),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 32, vertical: 24),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -129,15 +166,12 @@ class DealerListScreen extends StatelessWidget {
             onPressed: _ctrl.isDeleting.value
                 ? null
                 : () async {
-                    final added = await Get.toNamed(
+                    final result = await Get.toNamed(
                         AppRoutes.addDealer,
                         arguments: null);
-                    if (added == true) {
-                      Get.snackbar(
-                        'Success',
-                        'Dealer added',
-                        snackPosition: SnackPosition.BOTTOM,
-                      );
+                    if (result == true) {
+                      Get.snackbar('Success', 'Dealer added',
+                          snackPosition: SnackPosition.BOTTOM);
                     }
                   },
             child: const Icon(Icons.add),

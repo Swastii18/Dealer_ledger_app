@@ -36,11 +36,7 @@ class DealerController extends GetxController {
   }
 
   Future<void> _refreshBalances() async {
-    final updated = <int, double>{};
-    for (final d in dealers) {
-      if (d.id != null) updated[d.id!] = await _db.getDealerBalance(d.id!);
-    }
-    balances.value = updated;
+    balances.value = await _db.getAllDealerBalances();
   }
 
   Future<bool> addDealer({
@@ -79,8 +75,6 @@ class DealerController extends GetxController {
         name: name.trim(), phone: phone.trim(), address: address.trim());
     await _db.updateDealer(updated);
     await loadDealers();
-    Get.snackbar('Updated', '${updated.name} updated',
-        snackPosition: SnackPosition.BOTTOM);
     return true;
   }
 

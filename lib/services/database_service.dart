@@ -156,4 +156,14 @@ class DatabaseService {
         [dealerId]);
     return (row.first['balance'] as num).toDouble();
   }
+
+  Future<Map<int, double>> getAllDealerBalances() async {
+    final db = await database;
+    final rows = await db.rawQuery(
+        'SELECT dealer_id, COALESCE(SUM(debit) - SUM(credit), 0) as balance FROM ledger GROUP BY dealer_id');
+    return {
+      for (final r in rows)
+        (r['dealer_id'] as int): (r['balance'] as num).toDouble()
+    };
+  }
 }

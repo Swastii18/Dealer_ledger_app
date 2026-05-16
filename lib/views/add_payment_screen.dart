@@ -34,7 +34,8 @@ class _AddPaymentScreenState extends State<AddPaymentScreen> {
   @override
   void initState() {
     super.initState();
-    _dealer = Get.arguments as DealerModel;
+    final args = Get.arguments;
+    _dealer = args is DealerModel ? args : (throw ArgumentError('AddPaymentScreen requires a DealerModel argument'));
     _dateCtrl.text = DateFormat('yyyy-MM-dd').format(DateTime.now());
   }
 

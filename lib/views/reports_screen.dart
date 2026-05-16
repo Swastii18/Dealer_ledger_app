@@ -22,7 +22,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
   @override
   void initState() {
     super.initState();
-    _dealer = Get.arguments as DealerModel;
+    final args = Get.arguments;
+    _dealer = args is DealerModel ? args : (throw ArgumentError('ReportsScreen requires a DealerModel argument'));
     if (_ctrl.entries.isEmpty) _ctrl.loadLedger(_dealer.id!);
   }
 
